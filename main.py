@@ -4,6 +4,8 @@ from pathlib import Path
 import flet as ft
 
 from src.engine_handle import predict
+from src.encodings import encodings
+
 
 class Main:
     def __init__(self):
@@ -63,7 +65,7 @@ class Main:
 
         def build_app():
             page.window_width = 800
-            page.window_height = 350
+            page.window_height = 550
 
             title = ft.Text('Plain Text Encoder', size=30)
             title_container = ft.Container(content=title, alignment=ft.alignment.center, padding=20)
@@ -102,7 +104,7 @@ class Main:
             set_predicted_encoding_text('NO FILE CHOSEN')
             predicted_encoding_hint_icon = ft.Container(
                 content=ft.Icon(ft.icons.QUESTION_MARK_SHARP, size=20),
-                on_click=on_hint_click
+                on_hover=on_hint_click
             )
 
             # HINT
@@ -141,11 +143,11 @@ class Main:
                 padding=ft.padding.only(bottom=10, left=20),
             )
 
-            available_encodings = ['ascii', 'utf-8', 'utf-8-sig']
+            # DROPDOWN & CONVERT
             available_encodings_dropdown = ft.Dropdown(
-                options=[*[ft.dropdown.Option(x.upper()) for x in available_encodings]],
+                options=[*[ft.dropdown.Option(x) for x in encodings]],
             )
-            available_encodings_dropdown.value = 'utf-8'.upper()
+            available_encodings_dropdown.value = 'UTF-8-SIG'
 
             available_encodings_container = ft.Container(
                 content=available_encodings_dropdown,
@@ -155,14 +157,24 @@ class Main:
                 'Convert file',
             )
 
-            convert_row = ft.Row(controls=[
+            convert_row2 = ft.Row(controls=[
                 available_encodings_container,
                 convert_button,
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
+            convert_row1 = ft.Row(controls=[
+                ft.Text('Choose destination encoding', size=16)
+            ])
+
+            convert_column = ft.Column(controls=[
+                convert_row1,
+                convert_row2,
+            ])
+
             convert_container = ft.Container(
-                content=convert_row,
-                margin=ft.margin.symmetric(0, 20)
+                content=convert_column,
+                margin=ft.margin.symmetric(0, 20),
+                padding=ft.padding.only(top=10),
             )
 
             # ADD MAIN COMPONENTS
