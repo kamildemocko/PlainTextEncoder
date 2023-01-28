@@ -12,6 +12,8 @@ class Main:
         self.page = None
         self.predicted_encoding_text = None
         self.file_path = None
+        self.convert_button = None
+        self.result_text = None
 
     def main_flet(self, page: ft.Page):
         self.page = page
@@ -22,6 +24,7 @@ class Main:
 
         def set_predicted_encoding_text_default():
             set_predicted_encoding_text('INVALID FILE')
+            page.update()
 
         def validate_filepath_exists(path: str = None) -> Optional[Path]:
             if not path:
@@ -31,6 +34,7 @@ class Main:
             if not path.is_file() or not path.exists():
                 set_predicted_encoding_text_default()
                 path = None
+                self.convert_button.disabled = True
 
             return path
 
@@ -41,6 +45,10 @@ class Main:
 
             self.file_path.value = path
             set_predicted_encoding_text(predicted_encoding)
+
+            self.convert_button.disabled = False
+
+            page.update()
 
         def on_file_picker_dialog(e: ft.FilePickerResultEvent):
             """runs if the path is chosen from file explorer"""
@@ -55,6 +63,8 @@ class Main:
             if subtitle_file_path:
                 handle_filepath_inserted(subtitle_file_path)
 
+            page.update()
+
         def on_path_value_change(e: ft.ControlEvent):
             """runs if value in text field changes"""
 
@@ -63,132 +73,143 @@ class Main:
             if subtitle_file_path:
                 handle_filepath_inserted(subtitle_file_path)
 
-        def build_app():
-            page.window_width = 800
-            page.window_height = 550
+            page.update()
 
-            title = ft.Text('Plain Text Encoder', size=30)
-            title_container = ft.Container(content=title, alignment=ft.alignment.center, padding=20)
+        # MAIN PROC
+        page.window_width = 800
+        page.window_height = 450
 
-            file_picker = ft.FilePicker(on_result=on_file_picker_dialog)
-            page.overlay.append(file_picker)
+        title = ft.Text('Plain Text Encoder', size=30)
+        title_container = ft.Container(content=title, alignment=ft.alignment.center, padding=20)
 
-            self.file_path = ft.TextField(
-                label='Insert file path OR choose subtitle file through file explorer',
-                width=600,
-                text_size=13,
-                on_change=on_path_value_change,
-            )
+        file_picker = ft.FilePicker(on_result=on_file_picker_dialog)
+        page.overlay.append(file_picker)
 
-            file_btn = ft.ElevatedButton(
-                'Choose file',
-                on_click=lambda _: file_picker.pick_files()
-            )
-            fu_row = ft.Row(controls=[
-                self.file_path,
-                file_btn
-            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-            fu_container = ft.Container(content=fu_row, margin=ft.margin.symmetric(0, 20))
+        self.file_path = ft.TextField(
+            label='Insert file path OR choose subtitle file through file explorer',
+            width=600,
+            text_size=13,
+            on_change=on_path_value_change,
+        )
 
-            # PREDICTED
-            def on_hint_click(_):
-                if predicted_encoding_hint.visible:
-                    predicted_encoding_hint.visible = False
-                    page.window_height = page.window_height - 50
-                else:
-                    predicted_encoding_hint.visible = True
-                    page.window_height = page.window_height + 50
-                page.update()
+        file_btn = ft.ElevatedButton(
+            'Choose file',
+            on_click=lambda _: file_picker.pick_files()
+        )
+        fu_row = ft.Row(controls=[
+            self.file_path,
+            file_btn
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+        fu_container = ft.Container(content=fu_row, margin=ft.margin.symmetric(0, 20))
 
-            self.predicted_encoding_text = ft.Text(size=16)
-            set_predicted_encoding_text('NO FILE CHOSEN')
-            predicted_encoding_hint_icon = ft.Container(
-                content=ft.Icon(ft.icons.QUESTION_MARK_SHARP, size=20),
-                on_hover=on_hint_click
-            )
+        # PREDICTED
+        def on_hint_click(_):
+            if predicted_encoding_hint.visible:
+                predicted_encoding_hint.visible = False
+                page.window_height = page.window_height - 50
+            else:
+                predicted_encoding_hint.visible = True
+                page.window_height = page.window_height + 50
+            page.update()
 
-            # HINT
-            predicted_encoding_hint_row = ft.Column(controls=[
-                ft.Row(controls=[
-                    ft.Icon(ft.icons.ALBUM),
-                    ft.Text('Globally accepted standard is the "UTF-8"'),
-                ]),
-                ft.Row(controls=[
-                    ft.Icon(ft.icons.ALBUM),
-                    ft.Text('For most TV subtitles I recommend the "UTF-8-SIG"')
-                ]),
-            ], spacing=0)
-            predicted_encoding_hint = ft.Container(
-                content=predicted_encoding_hint_row,
-                visible=False
-            )
+        self.predicted_encoding_text = ft.Text(size=16)
+        set_predicted_encoding_text('NO FILE CHOSEN')
+        predicted_encoding_hint_icon = ft.Container(
+            content=ft.Icon(ft.icons.QUESTION_MARK_SHARP, size=20),
+            on_hover=on_hint_click
+        )
 
-            predicted_row1 = ft.Row(controls=[
-                self.predicted_encoding_text,
-                predicted_encoding_hint_icon,
-            ], vertical_alignment=ft.CrossAxisAlignment.START)
+        # HINT
+        predicted_encoding_hint_row = ft.Column(controls=[
+            ft.Row(controls=[
+                ft.Icon(ft.icons.ALBUM),
+                ft.Text('Globally accepted standard is the "UTF-8"'),
+            ]),
+            ft.Row(controls=[
+                ft.Icon(ft.icons.ALBUM),
+                ft.Text('For movie subtitles run on TVs I recommend the "UTF-8-SIG"')
+            ]),
+        ], spacing=0)
+        predicted_encoding_hint = ft.Container(
+            content=predicted_encoding_hint_row,
+            visible=False
+        )
 
-            predicted_row2 = ft.Row(controls=[
-                predicted_encoding_hint,
-            ], vertical_alignment=ft.CrossAxisAlignment.START)
+        predicted_row1 = ft.Row(controls=[
+            self.predicted_encoding_text,
+            predicted_encoding_hint_icon,
+        ], vertical_alignment=ft.CrossAxisAlignment.START)
 
-            predicted_encoding_container1 = ft.Container(
-                content=predicted_row1,
-                margin=ft.margin.symmetric(0, 20),
-                padding=ft.padding.only(top=10),
-            )
-            predicted_encoding_container2 = ft.Container(
-                content=predicted_row2,
-                margin=ft.margin.symmetric(0, 20),
-                padding=ft.padding.only(bottom=10, left=20),
-            )
+        predicted_row2 = ft.Row(controls=[
+            predicted_encoding_hint,
+        ], vertical_alignment=ft.CrossAxisAlignment.START)
 
-            # DROPDOWN & CONVERT
-            available_encodings_dropdown = ft.Dropdown(
-                options=[*[ft.dropdown.Option(x) for x in encodings]],
-            )
-            available_encodings_dropdown.value = 'UTF-8-SIG'
+        predicted_encoding_container1 = ft.Container(
+            content=predicted_row1,
+            margin=ft.margin.symmetric(0, 25),
+            padding=ft.padding.only(top=10),
+        )
+        predicted_encoding_container2 = ft.Container(
+            content=predicted_row2,
+            margin=ft.margin.symmetric(0, 20),
+            padding=ft.padding.only(bottom=10, left=20),
+        )
 
-            available_encodings_container = ft.Container(
-                content=available_encodings_dropdown,
-            )
+        # DROPDOWN & CONVERT
+        available_encodings_dropdown = ft.Dropdown(
+            options=[*[ft.dropdown.Option(x) for x in encodings]],
+        )
+        available_encodings_dropdown.value = 'UTF-8-SIG'
 
-            convert_button = ft.ElevatedButton(
-                'Convert file',
-            )
+        available_encodings_container = ft.Container(
+            content=available_encodings_dropdown,
+        )
 
-            convert_row2 = ft.Row(controls=[
-                available_encodings_container,
-                convert_button,
-            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+        self.convert_button = ft.ElevatedButton(
+            'Convert file',
+            disabled=True,
+        )
 
-            convert_row1 = ft.Row(controls=[
-                ft.Text('Choose destination encoding', size=16)
-            ])
+        convert_row2 = ft.Row(controls=[
+            available_encodings_container,
+            self.convert_button,
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
-            convert_column = ft.Column(controls=[
-                convert_row1,
-                convert_row2,
-            ])
+        convert_row1 = ft.Row(controls=[
+            ft.Text('Choose encoding', size=16)
+        ])
 
-            convert_container = ft.Container(
-                content=convert_column,
-                margin=ft.margin.symmetric(0, 20),
-                padding=ft.padding.only(top=10),
-            )
+        convert_column = ft.Column(controls=[
+            ft.Container(
+                content=convert_row1,
+                margin=ft.margin.only(left=5)
+            ),
+            convert_row2,
+        ])
 
-            # ADD MAIN COMPONENTS
-            page.add(
-                title_container,
-                fu_container,
-                ft.Column(controls=[
-                    predicted_encoding_container1,
-                    predicted_encoding_container2,
-                ]),
-                convert_container,
-            )
+        convert_container = ft.Container(
+            content=convert_column,
+            margin=ft.margin.symmetric(0, 20),
+            padding=ft.padding.only(top=10),
+        )
 
-        build_app()
+        self.result_text = ft.Text('TEST', size=16)
+        result_container = ft.Container(
+            content=self.result_text,
+            margin=ft.margin.symmetric(0, 25)
+        )
+
+        # ADD MAIN COMPONENTS
+        page.add(
+            title_container,
+            fu_container,
+            ft.Column(controls=[
+                predicted_encoding_container1,
+                predicted_encoding_container2,
+            ]),
+            convert_container,
+            result_container,
+        )
 
     def start(self):
         ft.app(target=self.main_flet)
