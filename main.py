@@ -57,8 +57,8 @@ class Main:
             """runs when we have a valid path to subtitle"""
 
             size = path.stat().st_size
-            # limit to 10MB
-            if size > 10 * 1024 * 1024:
+            # limit to 100MB
+            if size > 100 * 1024 * 1024:
                 set_predicted_encoding_text(f'Filesize limit is 10MB', error=True)
                 page.update()
                 return
