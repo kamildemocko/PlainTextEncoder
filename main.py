@@ -3,27 +3,41 @@ from pathlib import Path
 
 import flet as ft
 
-from src.engine_handle import predict
+from src.engine_handle import predict, convert_file
 from src.encodings import encodings
 
 
 class Main:
     def __init__(self):
         self.page = None
-        self.predicted_encoding_text = None
-        self.file_path = None
-        self.convert_button = None
-        self.result_text = None
+        self.predicted_encoding_text: Optional[ft.Text] = None
+        self.file_path: Optional[ft.Text] = None
+        self.convert_button: Optional[ft.ElevatedButton] = None
+        self.result_encoding: str = 'UTF-8-SIG'
+        self.result_text: Optional[ft.Text] = None
 
     def main_flet(self, page: ft.Page):
         self.page = page
 
-        def set_predicted_encoding_text(encoding: str):
-            self.predicted_encoding_text.value = f'Predicted encoding of the original file: {encoding.upper()}'
+        def set_predicted_encoding_text(encoding: str, error: bool = False):
+            if error:
+                self.predicted_encoding_text.value = encoding.upper()
+            else:
+                self.predicted_encoding_text.value = f'Predicted encoding of the original file: {encoding.upper()}'
+
             page.update()
 
         def set_predicted_encoding_text_default():
             set_predicted_encoding_text('INVALID FILE')
+            page.update()
+
+        def set_result_text(oknk: bool, filename: str, encoding: str, error: str = ''):
+            if oknk:
+                self.result_text.value = f'File {filename} was successfully encoded in {encoding}'
+                self.result_text.color = ft.colors.GREEN
+            else:
+                self.result_text.value = f'There was error encoding file {filename} in {encoding}\nDetail: {error}'
+                self.result_text.color = ft.colors.RED
             page.update()
 
         def validate_filepath_exists(path: str = None) -> Optional[Path]:
@@ -41,7 +55,25 @@ class Main:
         def handle_filepath_inserted(path: Path):
             """runs when we have a valid path to subtitle"""
 
-            predicted_encoding = predict(path)
+            size = path.stat().st_size
+            # limit to 10MB
+            if size > 10 * 1024 * 1024:
+                set_predicted_encoding_text(f'Filesize limit is 10MB', error=True)
+                page.update()
+                return
+
+            try:
+                predicted_encoding = predict(path)
+            except Exception as e:
+                set_predicted_encoding_text(f'{str(e)}', error=True)
+                page.update()
+                return
+
+            # could not detetect encodig -> apps, music, etc...
+            if not predicted_encoding:
+                set_predicted_encoding_text(f'Could not detect encoding', error=True)
+                page.update()
+                return
 
             self.file_path.value = path
             set_predicted_encoding_text(predicted_encoding)
@@ -75,6 +107,35 @@ class Main:
 
             page.update()
 
+        def on_hint_click(_):
+            if predicted_encoding_hint.visible:
+                predicted_encoding_hint.visible = False
+                page.window_height = page.window_height - 50
+            else:
+                predicted_encoding_hint.visible = True
+                page.window_height = page.window_height + 50
+            page.update()
+
+        def set_result_encoding(e: ft.ControlEvent):
+            self.result_encoding = e.control.value
+
+        def on_result_button_pressed(e: ft.ControlEvent):
+            """runs when convert button is preesed"""
+
+            filepath = Path(self.file_path.value)
+            filename = filepath.name
+
+            try:
+                convert_file()
+            except Exception as e:
+                set_result_text(False, filename, self.result_encoding, str(e))
+                return
+            finally:
+                self.convert_button.disabled = True
+
+            set_result_text(True, filename, self.result_encoding)
+
+
         # MAIN PROC
         page.window_width = 800
         page.window_height = 450
@@ -103,17 +164,8 @@ class Main:
         fu_container = ft.Container(content=fu_row, margin=ft.margin.symmetric(0, 20))
 
         # PREDICTED
-        def on_hint_click(_):
-            if predicted_encoding_hint.visible:
-                predicted_encoding_hint.visible = False
-                page.window_height = page.window_height - 50
-            else:
-                predicted_encoding_hint.visible = True
-                page.window_height = page.window_height + 50
-            page.update()
-
-        self.predicted_encoding_text = ft.Text(size=16)
-        set_predicted_encoding_text('NO FILE CHOSEN')
+        self.predicted_encoding_text = ft.Text(size=16, color=ft.colors.YELLOW)
+        set_predicted_encoding_text('NO FILE CHOSEN', error=True)
         predicted_encoding_hint_icon = ft.Container(
             content=ft.Icon(ft.icons.QUESTION_MARK_SHARP, size=20),
             on_hover=on_hint_click
@@ -158,6 +210,7 @@ class Main:
         # DROPDOWN & CONVERT
         available_encodings_dropdown = ft.Dropdown(
             options=[*[ft.dropdown.Option(x) for x in encodings]],
+            on_change=set_result_encoding,
         )
         available_encodings_dropdown.value = 'UTF-8-SIG'
 
@@ -168,6 +221,7 @@ class Main:
         self.convert_button = ft.ElevatedButton(
             'Convert file',
             disabled=True,
+            on_click=on_result_button_pressed
         )
 
         convert_row2 = ft.Row(controls=[
@@ -193,7 +247,7 @@ class Main:
             padding=ft.padding.only(top=10),
         )
 
-        self.result_text = ft.Text('TEST', size=16)
+        self.result_text = ft.Text('', size=16)
         result_container = ft.Container(
             content=self.result_text,
             margin=ft.margin.symmetric(0, 25)
