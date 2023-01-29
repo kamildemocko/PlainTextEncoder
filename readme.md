@@ -1,4 +1,4 @@
-# File Encoder
+# Plain Text Encoder
 
 ## Description
 Simple file encoder
