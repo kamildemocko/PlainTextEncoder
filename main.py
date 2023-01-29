@@ -10,10 +10,11 @@ from src.encodings import encodings
 class Main:
     def __init__(self):
         self.page = None
+        self.predicted_encoding: str = None
         self.predicted_encoding_text: Optional[ft.Text] = None
         self.file_path: Optional[ft.Text] = None
         self.convert_button: Optional[ft.ElevatedButton] = None
-        self.result_encoding: str = 'UTF-8-SIG'
+        self.result_encoding: str = 'UTF-8'
         self.result_text: Optional[ft.Text] = None
 
     def main_flet(self, page: ft.Page):
@@ -63,20 +64,20 @@ class Main:
                 return
 
             try:
-                predicted_encoding = predict(path)
+                self.predicted_encoding = predict(path)
             except Exception as e:
                 set_predicted_encoding_text(f'{str(e)}', error=True)
                 page.update()
                 return
 
             # could not detetect encodig -> apps, music, etc...
-            if not predicted_encoding:
+            if not self.predicted_encoding:
                 set_predicted_encoding_text(f'Could not detect encoding', error=True)
                 page.update()
                 return
 
             self.file_path.value = path
-            set_predicted_encoding_text(predicted_encoding)
+            set_predicted_encoding_text(self.predicted_encoding)
 
             self.convert_button.disabled = False
 
@@ -110,10 +111,10 @@ class Main:
         def on_hint_click(_):
             if predicted_encoding_hint.visible:
                 predicted_encoding_hint.visible = False
-                page.window_height = page.window_height - 50
+                page.window_height = page.window_height - 90
             else:
                 predicted_encoding_hint.visible = True
-                page.window_height = page.window_height + 50
+                page.window_height = page.window_height + 90
             page.update()
 
         def set_result_encoding(e: ft.ControlEvent):
@@ -126,7 +127,11 @@ class Main:
             filename = filepath.name
 
             try:
-                convert_file()
+                convert_file(
+                    filepath,
+                    self.predicted_encoding,
+                    self.result_encoding,
+                )
             except Exception as e:
                 set_result_text(False, filename, self.result_encoding, str(e))
                 return
@@ -134,11 +139,13 @@ class Main:
                 self.convert_button.disabled = True
 
             set_result_text(True, filename, self.result_encoding)
+            self.file_path.value = ''
+            set_predicted_encoding_text('NO FILE CHOOSEN', error=True)
 
 
         # MAIN PROC
         page.window_width = 800
-        page.window_height = 450
+        page.window_height = 440
 
         title = ft.Text('Plain Text Encoder', size=30)
         title_container = ft.Container(content=title, alignment=ft.alignment.center, padding=20)
@@ -173,6 +180,14 @@ class Main:
 
         # HINT
         predicted_encoding_hint_row = ft.Column(controls=[
+            ft.Row(controls=[
+                ft.Icon(ft.icons.FACT_CHECK),
+                ft.Text('Unsupported characters will be removed when converting into ASCII'),
+            ]),
+            ft.Row(controls=[
+                ft.Icon(ft.icons.FACT_CHECK),
+                ft.Text('Precition is based on a hundred lines and depends on characters used in the file'),
+            ]),
             ft.Row(controls=[
                 ft.Icon(ft.icons.ALBUM),
                 ft.Text('Globally accepted standard is the "UTF-8"'),
@@ -212,7 +227,7 @@ class Main:
             options=[*[ft.dropdown.Option(x) for x in encodings]],
             on_change=set_result_encoding,
         )
-        available_encodings_dropdown.value = 'UTF-8-SIG'
+        available_encodings_dropdown.value = 'UTF-8'
 
         available_encodings_container = ft.Container(
             content=available_encodings_dropdown,
