@@ -8,4 +8,9 @@ Simple file encoder
 - can convert file up to 100MB, limit is set precociously, can probably do more
 - tested in **Windows** and **Mac**
 
+## Purpose
+- converts text files in between encodings
+- example: convert your subitles files to utf-8-sig, which is accepted on most TVs
+
+## Screenshots
 ![image](https://user-images.githubusercontent.com/50048116/215319240-4ec71f6c-a59c-438d-b672-90c0c510c50d.png)
